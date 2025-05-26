@@ -1,0 +1,52 @@
+{
+  "name": "mega-mall",
+  "version": "1.0.0",
+  "description": "This is fully funtioning Ecommerce website backend with node and express js.7",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --no-warnings --experimental-specifier-resolution=node dist/index.js",
+    "dev": "nodemon --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "node",
+    "js",
+    "express",
+    "js",
+    "mongoose"
+  ],
+  "author": "Sameer",
+  "license": "ISC",
+  "dependencies": {
+    "@auth/core": "^0.39.1",
+    "@auth/express": "^0.10.1",
+    "@clerk/express": "^1.5.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.16.0",
+    "mongoose": "^8.15.0",
+    "resend": "^4.5.1",
+    "zod": "^3.25.7"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.15.19",
+    "dotenv": "^16.5.0",
+    "eslint": "^9.27.0",
+    "express": "^5.1.0",
+    "install": "^0.13.0",
+    "nodemon": "^3.1.10",
+    "npm": "^10.9.2",
+    "prettier": "^3.5.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
