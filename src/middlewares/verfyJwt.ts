@@ -4,12 +4,12 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { ApiResponse } from "../utils/apiResponse.js";
 import userModel, { UserI } from "../models/userModel.js";
 
-interface newRequset extends Request {
+ export interface newRequest extends Request {
     user?: UserI
 }
 
 
-export const verifyJwt = asyncHandler(async(req: newRequset, res: Response, next: NextFunction) => {
+export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next: NextFunction) => {
   
    try {
     const token = req.headers.authorization?.replace("Bearer ","") || req.cookies.Token;

@@ -8,6 +8,10 @@ import { signInSchema } from "../zodSchemas/signInSchema.js";
 import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { newRequest } from "../middlewares/verfyJwt.js";
+import { otpSchema } from "../zodSchemas/otp.js";
+import { uploadFile } from "../utils/cloudinary.js";
+import { unlink } from "node:fs/promises";
 
 export const signUp = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -166,3 +170,180 @@ export const signIn = asyncHandler(
       .json(new ApiResponse(true, 200, "Sign-in successfully."));
   }
 );
+
+export const changePassword = asyncHandler(
+  async (req: newRequest , res: Response, next: NextFunction) => {
+    const { currentPassword, newPassword }: { currentPassword: string; newPassword: string } = req.body;
+    const userId = req.user?._id;
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json(new ApiResponse(false, 404, "User not found"));
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json(new ApiResponse(false, 400, "Current password is incorrect"));
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.status(200).json(new ApiResponse(true, 200, "Password updated."));
+  }
+);
+
+export const EmailVerification = asyncHandler(
+  async (req: newRequest, res: Response) => {
+    const { newEmail }: { newEmail: string } = req.body;
+    const emailSchema = signInSchema.pick({ email: true });
+    const result = emailSchema.safeParse({ email: newEmail });
+    if (!result.success) {
+      return res.status(400).json(new ApiResponse(false, 400, result.error.issues[0].message || "All credentials are required"));
+    }
+    const userId = req.user?._id;
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json(new ApiResponse(false, 404, "User not found"));
+    }
+
+    const existingUser = await userModel.findOne({ email: newEmail });
+    if (existingUser) {
+      return res.status(400).json(new ApiResponse(false, 400, "Email already in use"));
+    }
+    const otp = Math.floor(Math.random() * 1000000);
+    const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    user.otp = otp.toString();
+    user.otpExpiry = otpExpiry;
+    await user.save();
+
+    const emailResponse = await emailVerification(
+      user.fullName,
+      user.email,
+      user.otp
+    );
+    if (!emailResponse.success) {
+      return res
+        .status(emailResponse.status)
+        .json(
+          new ApiResponse(false, emailResponse.status, emailResponse.message)
+        );
+    }
+
+    return res.status(200).json(new ApiResponse(true, 200, "Verification code sent successfully to your email. Please verify your email."));
+  }
+);
+
+
+export const changeEmail = asyncHandler(async(req: newRequest, res: Response ) => {
+  const {newEmail} = req.params;
+  const { otp }: { otp: string } = req.body;
+  if(!newEmail) {
+    return res.status(400).json(new ApiResponse(false, 400, "Please enter new email"));
+  }
+
+  const result = otpSchema.safeParse(otp);
+  if (!result.success) {
+    return res.status(400).json(new ApiResponse(false, 400, result.error.issues[0].message || "Please enter valid verification code."));
+  }
+  const userId = req.user?._id;
+
+  const user = await userModel.findById(userId);
+  if (!user) {
+    return res.status(404).json(new ApiResponse(false, 404, "User not found"));
+  }
+
+  if (user.otp !== otp) {
+    return res.status(400).json(new ApiResponse(false, 400, "Invalid verification code"));
+  }
+
+  if (user.otpExpiry < new Date()) {
+    return res.status(400).json(new ApiResponse(false, 400, "Verification code has expired"));
+  }
+
+  user.email = newEmail;
+  await user.save();
+  return res.status(200).json(new ApiResponse(true, 200, "Email changed successfully"));
+
+})
+
+export const verifyOtp = asyncHandler(async (req: newRequest, res: Response) => {
+  const { otp }: { otp: string } = req.body;
+  const result = otpSchema.safeParse(otp);
+  if (!result.success) {
+    return res.status(400).json(new ApiResponse(false, 400, result.error.issues[0].message || "Please enter valid verification code."));
+  }
+  const userId = req.user?._id;
+
+  const user = await userModel.findById(userId);
+  if (!user) {
+    return res.status(404).json(new ApiResponse(false, 404, "User not found"));
+  }
+
+  if (user.otp !== otp) {
+    return res.status(400).json(new ApiResponse(false, 400, "Invalid verification code"));
+  }
+
+  if (user.otpExpiry < new Date()) {
+    return res.status(400).json(new ApiResponse(false, 400, "Verification code has expired"));
+  }
+
+  user.isVerified = true;
+  await user.save();
+  return res.status(200).json(new ApiResponse(true, 200, "Verification successfully completed."));
+
+})
+
+export const changeAvatar = asyncHandler(
+  async (req: newRequest, res: Response) => {
+    const avatar = req.file?.originalname || req.file?.filename;
+    if (!avatar) {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Please upload an image"));
+    }
+    const userId = req.user?._id;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json(new ApiResponse(false, 404, "User not found"));
+    }
+
+    const fileUpload = await uploadFile(avatar, "image");
+
+    if (!fileUpload) {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Something went wrong during file upload."));
+    }
+    user.avatar = fileUpload.url;
+    await user.save();
+    await unlink(avatar);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(true, 200, "Avatar changed successfully."));
+  }
+);
+
+export const logout = asyncHandler(async(req: newRequest, res: Response) => {
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+ return res.status(200)
+ .clearCookie("token", options)
+ .json(new ApiResponse(true, 200, "Logout successfully."));
+
+});
+
+export const deleteAccount = asyncHandler(async(req: newRequest, res: Response) => {
+  const userId = req.user?._id; 
+
+  await userModel.findByIdAndDelete(userId);
+  return res.status(200)
+  .json(new ApiResponse(true, 200, "Account deleted successfully.")); 
+
+})

@@ -1,7 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { Resend } from "resend";
-
- export const resend = new Resend(process.env.RESEND_API_KEY! as string);
-console.log(process.env.RESEND_API_KEY)
+ export const resend = new Resend(process.env.RESEND_API_KEY! as string ?? ""  );
  export const emailVerification = async(userName: string, email: string, otp: string) => {
        const { error } = await resend.emails.send({
     from: "Mega Mall <sameer-dev.online>",
