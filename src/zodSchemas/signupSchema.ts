@@ -10,12 +10,10 @@ export const signupSchema = z
       .string().email({ message: "Invalid email" }),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(30, "Password must be at most 30 characters"),
+      .min(8, "Password must be at least 8 characters"),
     confirmPassword: z
       .string()
       .min(8, "Confirm Password must be at least 8 characters")
-      .max(30, "Confirm Password must be at most 30 characters"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

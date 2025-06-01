@@ -11,7 +11,7 @@ export interface UserI extends Document {
   otp: string;
   otpExpiry: Date;
   avatar: string;
-  cartItems: mongoose.Schema.Types.ObjectId;
+  cartItems: mongoose.Schema.Types.ObjectId[];
   orders: mongoose.Schema.Types.ObjectId[];
 }
 
@@ -31,7 +31,6 @@ const userSchema = new Schema<UserI>({
   password: {
     type: String,
     minlength: 8,
-    maxlength: 30,
     required: true,
   },
   isVerified: {
@@ -48,15 +47,16 @@ const userSchema = new Schema<UserI>({
   },   
   avatar: {
     type: String,
-    required: false,
-    default: "https://res.cloudinary.com/dvqjyjyjy/image/upload/v1698975600/avatars/default-avatar.jpg"
+    default: "https://i.pinimg.com/736x/9f/5d/78/9f5d78dae6b6a660fcd27534ed414201.jpg"
     
   } ,
-  cartItems: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Cart",
-    required: false,
-  },
+  cartItems: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cart",
+      default: [],
+    },
+  ],
   orders: [
     {
       type: mongoose.Schema.Types.ObjectId,

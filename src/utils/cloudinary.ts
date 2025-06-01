@@ -13,7 +13,7 @@ const uploadFile = async (filePath: string, format: string) => {
       resource_type: format as "image" | "video" | "raw" | "auto",
     });
     
-    console.log(`file is uploaded successfully ${response.url}`);
+    // console.log(`file is uploaded successfully ${response.url}`);
 
     return response;
   } catch (error: unknown) {

@@ -1,6 +1,7 @@
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 const app = express();
 
 app.use(express.json());
@@ -12,6 +13,7 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
 }));
+app.use(cookieParser());
 
 // routers
 import { userRouter } from "./routes/userRoutes.js";

@@ -12,7 +12,7 @@ import userModel, { UserI } from "../models/userModel.js";
 export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next: NextFunction) => {
   
    try {
-    const token = req.headers.authorization?.replace("Bearer ","") || req.cookies.Token;
+    const token =  req.cookies?.Token || req.header("Authorization")?.replace("Bearer ","");
     if(!token) {
     return res.status(400)
      .json(
@@ -39,6 +39,7 @@ export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next
     
    } catch (error: unknown) {
     if(error instanceof Error) {
+        console.log(error);
         return res.status(500)
         .json(
             new ApiResponse(false,500, error.message || "Something went wrong during token verification.")
