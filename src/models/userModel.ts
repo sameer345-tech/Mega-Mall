@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 import bcypt from "bcrypt";
 
 export interface UserI extends Document {
-  _id: string;
+  _id: mongoose.Schema.Types.ObjectId;
   fullName: string;
   email: string;
   password: string;
@@ -11,8 +11,10 @@ export interface UserI extends Document {
   otp: string;
   otpExpiry: Date;
   avatar: string;
-  cartItems: mongoose.Schema.Types.ObjectId[];
-  orders: mongoose.Schema.Types.ObjectId[];
+  cartItems: [{
+    cart:  mongoose.Schema.Types.ObjectId
+  }];
+  orders: {order: mongoose.Schema.Types.ObjectId}[];
 }
 
 const userSchema = new Schema<UserI>({
@@ -52,15 +54,18 @@ const userSchema = new Schema<UserI>({
   } ,
   cartItems: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cart",
-      default: [],
+      cart: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Cart",
+      }
     },
   ],
   orders: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
+      order: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Order",
+      }
     },
   ],
 }, {timestamps: true});

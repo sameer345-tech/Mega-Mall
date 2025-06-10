@@ -3,6 +3,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { ApiResponse } from "../utils/apiResponse.js";
 import userModel, { UserI } from "../models/userModel.js";
+import { generateToken } from "../controllers/userController.js";
+import mongoose from "mongoose";
 
  export interface newRequest extends Request {
     user?: UserI
@@ -40,6 +42,12 @@ export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next
    } catch (error: unknown) {
     if(error instanceof Error) {
         console.log(error);
+        if(error.message === "jwt expired" || "jwt expired.") {
+            const accessToken = await generateToken(req.user?._id as mongoose.Schema.Types.ObjectId);
+            req.cookies.Token = accessToken;
+            return next();
+        }
+        
         return res.status(500)
         .json(
             new ApiResponse(false,500, error.message || "Something went wrong during token verification.")

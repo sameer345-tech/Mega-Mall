@@ -12,7 +12,32 @@ import { newRequest } from "../middlewares/verfyJwt.js";
 import { otpSchema } from "../zodSchemas/otp.js";
 import { uploadFile } from "../utils/cloudinary.js";
 import { unlink } from "node:fs/promises";
-import { isValidObjectId } from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
+
+export const generateToken = async(userId: mongoose.Schema.Types.ObjectId): Promise<string> => {
+  try {
+    if(!isValidObjectId(userId)) {
+      throw new Error("Invalid user id.");
+    }
+    const user = await userModel.findById(userId);
+    if(!user) {
+      throw new Error("User not found.");
+    }
+    const token = jwt.sign(
+      { _id: user._id, email: user.email, fullName: user.fullName, isVerified: user.isVerified },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1h" }
+    );
+    return token as string;
+  } catch (error: unknown) {
+    if(error instanceof Error) {
+      return error.message;
+    }
+    return "Something went wrong during access token generation.";
+  }
+
+}
+
 
 export const signUp = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -371,3 +396,27 @@ export const deleteAccount = asyncHandler(async(req: newRequest, res: Response) 
   .json(new ApiResponse(true, 200, "Account deleted successfully.")); 
 
 })
+
+export const getUser = asyncHandler(async(req: newRequest, res: Response) => {
+
+  const userId = req.user?._id;
+  if(!isValidObjectId(userId)) {
+    return res.status(400).json(new ApiResponse(false, 400, "Invalid user id."));
+  }
+  const user = await userModel.aggregate([
+    {$match: {
+      _id: userId
+    }},
+    {$project: {
+      _id:0,
+      password: 0,
+      otp:0,
+      otpExpiry:0
+    }}
+  ])
+  if (!user || user.length === 0) {
+    return res.status(404).json(new ApiResponse(false, 404, "User not found."));
+  }
+  return res.status(200).json(new ApiResponse(true, 200, "User found successfully.", user));
+
+})  

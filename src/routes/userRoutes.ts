@@ -1,5 +1,5 @@
 import express from "express";
-import {signUp, signIn, changePassword,changeAvatar,changeEmail, EmailVerification, logout,verifyOtp, deleteAccount } from "../controllers/userController.js";
+import {signUp, signIn, changePassword,changeAvatar,changeEmail, EmailVerification, logout,verifyOtp, deleteAccount, getUser } from "../controllers/userController.js";
 import { verifyJwt } from "../middlewares/verfyJwt.js";
 import upload from "../middlewares/multer.js";
 const router = express.Router();
@@ -33,5 +33,9 @@ router.route("/verify-otp/:userId").post(
 router.route("/delete-account").delete(
     verifyJwt,
     deleteAccount
+);  
+router.route("/get-user").get(
+    verifyJwt,
+    getUser
 );  
 export const userRouter = router;

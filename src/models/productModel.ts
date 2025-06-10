@@ -8,14 +8,14 @@ export interface ProductI extends Document {
         url: string;
     }];
     category: string;
-    reviews: [
+    reviews?: [
         {
             user: mongoose.Schema.Types.ObjectId;
             rating: number;
             comment: string;
         }
     ];
-    weight: number;
+    weight: string;
     stock: number;
 }
 
@@ -53,25 +53,22 @@ const productSchema = new Schema<ProductI>({
             user: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "User",
-                required: false
             },
             rating: {
                 type: Number,
-                required: false,
                 min: 1,
                 max: 5
             },
             comment: {
                 type: String,
-                required: false,
                 trim: true
             }
         }
     ],
     weight: {
-        type: Number,
+        type: String,
         required: true,
-        min: 0,
+        min: 1,
     },
     stock: {
         type: Number,
@@ -81,6 +78,6 @@ const productSchema = new Schema<ProductI>({
 
 }, {timestamps: true});
 
-const Product = mongoose.model<ProductI>("Product", productSchema);
+const productModel = mongoose.model<ProductI>("Product", productSchema);
 
-export default Product;
+export default productModel;

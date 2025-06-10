@@ -1,21 +1,28 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { CartI } from "./cartModel.js";
 
 export interface OrderI extends Document {
   user: mongoose.Schema.Types.ObjectId;
-  cartItems: mongoose.Schema.Types.ObjectId;
-  totalPrice: number;
+  orderItems: [{
+    product: mongoose.Schema.Types.ObjectId,
+    quantity: number;
+    totalPrice: number;
+  }];
+  totalRevenue: number;
   status: string;
+  paymentMethod: string;
+  codCharges?: number;
   createdAt: Date;
   updatedAt: Date;
   shippingDetails: {
-    name: string;
+    fullName: string;
     address: string;
     phone: number;
     city: string;
     state: string;
     postalCode: string;
     country: string;
-  };
+  }[];
 }
 
 const orderSchema = new Schema<OrderI>({
@@ -24,21 +31,46 @@ const orderSchema = new Schema<OrderI>({
     ref: "User",
     required: true,
   },
-  cartItems: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Cart",
-    required: true
-  },
-  totalPrice: {
+  orderItems: [{
+            product: {
+                type:mongoose.Schema.Types.ObjectId,
+                ref: "Product",
+                required: true,
+            },
+            quantity: {
+                type: Number,
+                required: true,
+                default: 1,
+                min: 1,
+            },
+            totalPrice: {
+                type: Number,
+                required: true,
+                default: 0,
+            }
+        ,
+  }],
+  
+  totalRevenue: {
     type: Number,
     required: true,
-    min: 0,
+    default: 0, 
   },
   status: {
     type: String,
     enum: ["pending", "shipped", "delivered", "cancelled"],
     default: "pending",
     required: true,
+  },
+  paymentMethod: {
+    type: String,
+    enum: ["cod", "card"],
+    default: "cod",
+    required: true,
+  },
+  codCharges: {
+    type: Number,
+    default: 0,
   },
   createdAt: {
     type: Date,
@@ -48,8 +80,8 @@ const orderSchema = new Schema<OrderI>({
     type: Date,
     default: Date.now,
   },
-  shippingDetails: {
-    name: {
+  shippingDetails: [{
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -84,7 +116,7 @@ const orderSchema = new Schema<OrderI>({
       required: true,
       trim: true,
     },
-  },
+  }],
 
 }, {timestamps: true});
 

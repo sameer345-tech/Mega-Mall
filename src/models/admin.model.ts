@@ -1,14 +1,14 @@
 import mongoose, { Schema, Document } from "mongoose";
-
-interface AdminI extends Document {
+import bcypt from "bcrypt";
+export interface adminI extends Document {
   fullName: string;
   email: string;
   password: string;
   role: "superAdmin" | "admin" | "moderator";
-  products: mongoose.Schema.Types.ObjectId[];
+  products: {product: mongoose.Schema.Types.ObjectId}[];
 }
 
-const adminSchema = new Schema<AdminI>({
+const adminSchema = new Schema<adminI>({
   fullName: {
     type: String,
     required: true,
@@ -30,21 +30,28 @@ const adminSchema = new Schema<AdminI>({
   },
   role: {
     type: String,
-    enum: ["superAdmin", "admin", "moderator"],
+    enum: [ "superAdmin", "admin", "moderator"],
     default: "admin",
     required: true,
   },
   products: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: false,
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      }
     },
   ],
   
 }, {timestamps: true});
 
-const Admin = mongoose.model<AdminI>("Admin", adminSchema);
+adminSchema.pre("save", async function (next) {
+  if(!this.isModified("password")) return next();
+  this.password = await bcypt.hash(this.password, 10);
+  return next();
+})
 
-export default Admin;
+const adminModel = mongoose.model<adminI>("Admin", adminSchema);
+
+export default adminModel;
 
