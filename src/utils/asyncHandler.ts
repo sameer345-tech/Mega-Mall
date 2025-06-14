@@ -3,9 +3,7 @@ import { ApiResponse } from "./apiResponse.js";
 
  export const asyncHandler = (fn: Function) => async(req: Request, res: Response, next: NextFunction) => {
 
-    // interface CustomError extends Error {
-    //     status?: number
-    // }
+    
     try {
         await fn(req,res,next);
     } catch (error: unknown) {

@@ -14,7 +14,7 @@ export const addToCart = asyncHandler(
     if(!user) {
      return res
         .status(400)
-        .json(new ApiResponse(false, 400, "user not found."));
+        .json(new ApiResponse(false, 400, "userid not found. please login again."));
     }
     const { productId, quantity }: { productId: mongoose.Schema.Types.ObjectId; quantity: number } =
       req.body;

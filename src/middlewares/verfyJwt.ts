@@ -41,7 +41,7 @@ export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next
     
    } catch (error: unknown) {
     if(error instanceof Error) {
-        console.log(error);
+        console.log(error.message);
         if(error.message === "jwt expired" || "jwt expired.") {
             const accessToken = await generateToken(req.user?._id as mongoose.Schema.Types.ObjectId);
             req.cookies.Token = accessToken;

@@ -1,5 +1,5 @@
 import express from "express";
-import { placeOrder, getOrders } from "../controllers/orderController.js";
+import { placeOrder, getOrders, cancelOrderByUser } from "../controllers/orderController.js";
 import { verifyJwt } from "../middlewares/verfyJwt.js";
 
 const orderRouter = express.Router();
@@ -12,6 +12,11 @@ orderRouter.route("/place-order").post(
 orderRouter.route("/get-orders").get(
     verifyJwt,
     getOrders
+);
+
+orderRouter.route("/cancel-order-by-user").delete(
+    verifyJwt,
+    cancelOrderByUser
 );
 
 export default orderRouter;

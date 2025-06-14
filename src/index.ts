@@ -3,6 +3,9 @@ dotenv.config();
 
 import app from "./app.js";
 import dbConnection from "./db-connection/db.js";
+// Import email worker to start it
+import "./queues/email.worker.js";
+
 const port = process.env.PORT || 5000;
 
 // // Add global uncaught exception handler

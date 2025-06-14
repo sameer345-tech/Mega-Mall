@@ -6,6 +6,9 @@ import {
   signUp,
   login,
   updateProduct,
+  deleteOrder,
+  changeDeliveryStatus,
+  logout,
 } from "../controllers/adminController.js";
 import upload from "../middlewares/multer.js";
 import { verifyJwt } from "../middlewares/admin/verifyJwt.js";
@@ -24,5 +27,11 @@ adminRouter.route("/delete-product/:id").delete(verifyJwt, deleteProduct);
 adminRouter.route("/sign-up").post(signUp);
 
 adminRouter.route("/login").post(login);
+
+adminRouter.route("/delete-order").delete(verifyJwt, deleteOrder);
+
+adminRouter.route("/change-delivery-status").patch(verifyJwt, changeDeliveryStatus);
+
+adminRouter.route("/logout").post(verifyJwt, logout);
 
 export default adminRouter;

@@ -13,6 +13,7 @@ import { otpSchema } from "../zodSchemas/otp.js";
 import { uploadFile } from "../utils/cloudinary.js";
 import { unlink } from "node:fs/promises";
 import mongoose, { isValidObjectId } from "mongoose";
+import { emailQueue } from "../queues/emal.queue.js";
 
 export const generateToken = async(userId: mongoose.Schema.Types.ObjectId): Promise<string> => {
   try {
@@ -79,18 +80,22 @@ export const signUp = asyncHandler(
     user.otpExpiry = otpExpiry;
     await user.save();
 
-    const emailResponse = await emailVerification(
-      user.fullName,
-      user.email,
-      user.otp
+    await emailQueue.add(
+      "verify-email",
+      {
+        type: "verify-email",
+        payload: {
+          userName: user.fullName,
+          email: user.email,
+          otp: user.otp,
+        },
+      },
+      {
+        attempts: 3,
+        backoff: 5000, // retry after 5 sec
+      }
     );
-    if (!emailResponse.success) {
-      return res
-        .status(emailResponse.status)
-        .json(
-          new ApiResponse(false, emailResponse.status, emailResponse.message)
-        );
-    }
+
     const userData = {
       _id: user._id,
       fullName: user.fullName,
@@ -131,26 +136,23 @@ export const signIn = asyncHandler(
       unverifiedUser.otpExpiry = otpExpiry;
       await unverifiedUser.save();
 
-      const emailResponse = await emailVerification(
-        unverifiedUser.fullName,
-        email,
-        unverifiedUser.otp
-      );
-      if (!emailResponse.success) {
-        return res
-          .status(emailResponse.status)
-          .json(
-            new ApiResponse(
-              false,
-              emailResponse.status,
-              emailResponse.message ||
-                "Something went wrong during email verification"
-            )
-          );
+     await emailQueue.add(
+      "verify-email",
+      {
+        type: "verify-email",
+        payload: {
+          userName: unverifiedUser.fullName,
+          email: unverifiedUser.email,
+          otp: unverifiedUser.otp,
+        },
+      },
+      {
+        attempts: 3,
+        backoff: 5000, // retry after 5 sec
       }
+    );
 
-      return res
-        .status(200)
+     return  res.status(200)
         .json(
           new ApiResponse(
             true,
@@ -158,6 +160,7 @@ export const signIn = asyncHandler(
             "Verification code sent successfully to your email. Please verify your email"
           )
         );
+     
     }
 
     const verifiedUser = await userModel.findOne({ email, isVerified: true });
@@ -232,39 +235,61 @@ export const EmailVerification = asyncHandler(
     const emailSchema = signInSchema.pick({ email: true });
     const result = emailSchema.safeParse({ email: newEmail });
     if (!result.success) {
-      return res.status(400).json(new ApiResponse(false, 400, result.error.issues[0].message || "All credentials are required"));
+      return res
+        .status(400)
+        .json(
+          new ApiResponse(
+            false,
+            400,
+            result.error.issues[0].message || "All credentials are required"
+          )
+        );
     }
     const userId = req.user?._id;
 
     const user = await userModel.findById(userId);
     if (!user) {
-      return res.status(404).json(new ApiResponse(false, 404, "User not found"));
+      return res
+        .status(404)
+        .json(new ApiResponse(false, 404, "User not found"));
     }
 
     const existingUser = await userModel.findOne({ email: newEmail });
     if (existingUser) {
-      return res.status(400).json(new ApiResponse(false, 400, "Email already in use"));
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Email already in use"));
     }
     const otp = Math.floor(Math.random() * 1000000);
     const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
     user.otp = otp.toString();
     user.otpExpiry = otpExpiry;
     await user.save();
-
-    const emailResponse = await emailVerification(
-      user.fullName,
-      newEmail.trim(),
-      user.otp
+     await emailQueue.add(
+      "verify-email",
+      {
+        type: "verify-email",
+        payload: {
+          userName: user.fullName,
+          email: user.email,
+          otp: user.otp,
+        },
+      },
+      {
+        attempts: 3,
+        backoff: 5000, // retry after 5 sec
+      }
     );
-    if (!emailResponse.success) {
-      return res
-        .status(emailResponse.status)
-        .json(
-          new ApiResponse(false, emailResponse.status, emailResponse.message)
-        );
-    }
-
-    return res.status(200).json(new ApiResponse(true, 200, "Verification code sent successfully to your new email. Please verify your email."));
+   return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          true,
+          200,
+          "Verification code sent successfully to your new email. Please verify your email."
+        )
+      );
+   
   }
 );
 

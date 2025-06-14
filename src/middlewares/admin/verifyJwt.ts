@@ -6,12 +6,12 @@ import adminModel, { adminI } from "../../models/admin.model.js";
 import { generateAccessToken } from "../../controllers/adminController.js";
 import mongoose from "mongoose";
 
- export interface newRequest extends Request {
+ export interface newAdminRequest extends Request {
     admin?: adminI
 }
 
 
-export const verifyJwt = asyncHandler(async(req: newRequest, res: Response, next: NextFunction) => {
+export const verifyJwt = asyncHandler(async(req: newAdminRequest, res: Response, next: NextFunction) => {
   
    try {
     const accessToken =  req.cookies?.access_token || req.header("Authorization")?.replace("Bearer ","");

@@ -120,7 +120,7 @@ const orderSchema = new Schema<OrderI>({
 
 }, {timestamps: true});
 
-const Order = mongoose.model<OrderI>("Order", orderSchema);
+const orderModel = mongoose.model<OrderI>("Order", orderSchema);
 
-export default Order;
+export default orderModel;
 

@@ -22,3 +22,64 @@ import { Resend } from "resend";
 
  };
 
+ export const orderStatusUpdate = async(userName: string, email: string, message: string, orderId: string) => {
+  const { error, data } = await resend.emails.send({
+    from: `Mega Mall <support@sameer-dev.online>`,
+    to: email.trim(),
+    subject: "Order Status Update",
+    html: `<div style="font-family: sans-serif">
+    <h1>Hello ${userName}!</h1>
+    <p>${message}</p>
+    <p>Order id: ${orderId}</p>
+    <p>Best, Mega Mall</p>
+    </div> `
+  });
+
+  if (error) {
+    return {success: false, status: 500, message: error.message || "Something went wrong during email verification"};
+  }
+  return {success: true, status: 200, message: "Email sent successfully"};
+
+ };
+
+ export const cancelOrder = async(userName: string, email: string, message: string, orderId: string) => {
+  const { error, data } = await resend.emails.send({
+    from: `Mega Mall <support@sameer-dev.online>`,
+    to: email.trim(),
+    subject: "Order Cancelled",
+    html: `<div style="font-family: sans-serif">
+    <h1>Hello ${userName}!</h1>
+    <p>${message}</p>
+    <p>Order id: ${orderId}</p>
+    <p>Best, Mega Mall</p>
+    </div> `
+  });
+
+  if (error) {
+    return {success: false, status: 500, message: error.message || "Something went wrong during email verification"};
+  }
+  return {success: true, status: 200, message: "Email sent successfully"};
+
+ };
+
+export const placedOrder = async(userName: string, email: string, message: string, orderId: string) => {
+  const { error, data } = await resend.emails.send({
+    from: `Mega Mall <support@sameer-dev.online>`,
+    to: email.trim(),
+    subject: "Order Placed successfully.",
+    html: `<div style="font-family: sans-serif">
+    <h1>Hello ${userName}!</h1>
+    <p>${message}</p>
+    <p>Order id: ${orderId}</p>
+    <p>Best, Mega Mall</p>
+    </div> `
+  });
+
+  if (error) {
+    return {success: false, status: 500, message: error.message || "Something went wrong during email verification"};
+  }
+  return {success: true, status: 200, message: "Email sent successfully"};
+
+}
+
+

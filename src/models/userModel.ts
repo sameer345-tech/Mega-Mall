@@ -15,6 +15,8 @@ export interface UserI extends Document {
     cart:  mongoose.Schema.Types.ObjectId
   }];
   orders: {order: mongoose.Schema.Types.ObjectId}[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const userSchema = new Schema<UserI>({
@@ -68,6 +70,7 @@ const userSchema = new Schema<UserI>({
       }
     },
   ],
+  
 }, {timestamps: true});
 
 userSchema.pre("save", async function (next) {

@@ -16,7 +16,16 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { adminLoginSchema } from "../zodSchemas/adminLoginSchema.js";
 import { adminSignupSchema } from "../zodSchemas/adminSignupSchema.js";
-  
+import orderModel from "../models/orderModel.js";
+import userModel from "../models/userModel.js";
+import messageModel from "../models/messageModel.js";
+import { messageSchema } from "../zodSchemas/messageSchema.js";
+import { orderSchema } from "../zodSchemas/orderSchema.js";
+import { orderStatusUpdate } from "../services/resend.js";
+import { cancelOrder } from "../services/resend.js";
+import { newAdminRequest } from "../middlewares/admin/verifyJwt.js";
+import { emailQueue } from "../queues/emal.queue.js";
+
 export const generateAccessToken = async(userId: mongoose.Schema.Types.ObjectId): Promise<string> => {
   try {
     if(!isValidObjectId(userId)) {
@@ -41,7 +50,7 @@ export const generateAccessToken = async(userId: mongoose.Schema.Types.ObjectId)
 
 }
 
-export const signUp = asyncHandler(async (req: newRequest, res: Response) => {
+export const signUp = asyncHandler(async (req: newAdminRequest, res: Response) => {
   const { fullName, email, password, role } = req.body;
   const validateSignupData = adminSignupSchema.safeParse({
     fullName,
@@ -68,7 +77,7 @@ export const signUp = asyncHandler(async (req: newRequest, res: Response) => {
     .json(new ApiResponse(true, 200, "Admin created successfully", newAdmin));
 });
 
-export const login = asyncHandler(async (req: newRequest, res: Response) => {
+export const login = asyncHandler(async (req: newAdminRequest, res: Response) => {
 
   const { email, password } = req.body;
   const validateLoginData = adminLoginSchema.safeParse({ email, password });
@@ -99,7 +108,7 @@ export const login = asyncHandler(async (req: newRequest, res: Response) => {
 });
 
 export const uploadProduct = asyncHandler(
-  async (req: newRequest, res: Response) => {
+  async (req: newAdminRequest, res: Response) => {
     const images = req.files as Express.Multer.File[];
     if (!images || images.length === 0) {
       return res
@@ -169,7 +178,7 @@ export const uploadProduct = asyncHandler(
     });
     await Promise.all(images.map((image) => unlink(image.path)));
     await adminModel.findByIdAndUpdate(
-      req.user?._id,
+      req.admin?._id,
       { $push: { products: { product: product._id } } },
       { new: true }
     );
@@ -182,7 +191,7 @@ export const uploadProduct = asyncHandler(
 );
 
 export const deleteProduct = asyncHandler(
-  async (req: newRequest, res: Response) => {
+  async (req: newAdminRequest, res: Response) => {
     const productId = req.params.id;
     if (!isValidObjectId(productId)) {
       return res
@@ -206,7 +215,7 @@ export const deleteProduct = asyncHandler(
 );
 
 export const updateProduct = asyncHandler(
-  async (req: newRequest, res: Response) => {
+  async (req: newAdminRequest, res: Response) => {
     
     const productId = req.params.id;
     const { title, description, price, category, weight, stock } = req.body;
@@ -277,7 +286,7 @@ export const updateProduct = asyncHandler(
   }
 );
  
-export const suggestProductDetails = asyncHandler(async(req: newRequest, res: Response) => {
+export const suggestProductDetails = asyncHandler(async(req: newAdminRequest, res: Response) => {
  const filePath = req.file?.path;
  if(!filePath) {
   return res.status(400).json(new ApiResponse(false, 400, "Please upload an image"));
@@ -298,7 +307,150 @@ export const suggestProductDetails = asyncHandler(async(req: newRequest, res: Re
  return res.status(200).json(new ApiResponse(true, 200, "Suggestions generated successfully.", message  ));
 });
 
-export const logout = asyncHandler(async (req: newRequest, res: Response) => {
+export const changeDeliveryStatus = asyncHandler(
+  async (req: newAdminRequest, res: Response) => {
+    const { orderId, status }: { orderId: string; status: string } = req.body;
+    if (!orderId || orderId === "") {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Invalid order id."));
+    }
+
+    if(!status || status === "") {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Please enter a status."));
+    }
+    const order = await orderModel.findByIdAndUpdate(
+      orderId,
+      { status },
+      { new: true }
+    );
+    if (!order) {
+      return res
+        .status(404)
+        .json(new ApiResponse(false, 404, "Order not found."));
+    }
+    const message = `Hello ${order.shippingDetails[0].fullName}, Your order has been ${status}. Thank you for shopping with us.`;
+    const messageData = await messageModel.create({
+      sender: req.admin?._id,
+      senderModel: "Admin",
+      receiver: order.user,
+      receiverModel: "User",
+      message,
+    });
+    if(!messageData) {
+      return res
+        .status(500)
+        .json(new ApiResponse(false, 500, "Message not sent."));
+    }
+    const user =  await userModel.findById(order.user);
+    if(!user) {
+      return res
+        .status(404)
+        .json(new ApiResponse(false, 404, "User not found."));
+    }
+    await emailQueue.add(
+        "order-status-update",
+        {
+          type: "order-status-update",
+          payload: {
+            userName: user.fullName,
+            email: user.email,
+            message,
+            orderId: order._id as string,
+          },
+        },
+        {
+          attempts: 3,
+          backoff: 5000, // retry after 5 sec
+        }
+      );
+   return  res
+      .status(200)
+      .json(
+        new ApiResponse(true, 200, "Order status updated successfully.")
+      );
+     
+  }
+);
+
+export const deleteOrder = asyncHandler(
+  async (req: newAdminRequest, res: Response) => {
+    const { orderId, message } = req.body;
+    if (!isValidObjectId(orderId)) {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, "Invalid order id."));
+    }
+    const validateMessage = messageSchema.safeParse({message});
+    if(!validateMessage.success) {
+      return res
+        .status(400)
+        .json(new ApiResponse(false, 400, validateMessage.error.issues[0].message));
+    }
+    
+    const order = await orderModel.findByIdAndDelete(orderId);
+    if (!order) {
+      return res
+        .status(404)
+        .json(new ApiResponse(false, 404, "Order not found."));
+    }
+   const messageData = await messageModel.create({
+      sender: req.admin?._id,
+      senderModel: "Admin",
+      receiver: order.user,
+      receiverModel: "User",
+      message,
+    });
+    if(!messageData) {
+      return res
+        .status(500)
+        .json(new ApiResponse(false, 500, "Message not sent."));
+    }
+    
+   const updatedUser = await userModel.findByIdAndUpdate(
+     order.user,
+     {
+       $pull: {
+         orders: {
+           order: order._id,
+         },
+       },
+     },
+     { new: true }
+   );
+
+   if (!updatedUser) {
+     return res
+       .status(500)
+       .json(new ApiResponse(false, 500, "Order not deleted from user."));
+   }
+   await emailQueue.add(
+        "order-cancel",
+        {
+          type: "order-cancel",
+          payload: {
+            userName: updatedUser.fullName,
+            email: updatedUser.email,
+            message,
+            orderId: order._id as string,
+          },
+        },
+        {
+          attempts: 3,
+          backoff: 5000, // retry after 5 sec
+        }
+      );
+   return  res
+      .status(200)
+      .json(
+        new ApiResponse(true, 200, "Order deleted successfully.")
+      );
+     
+  }
+);
+export const logout = asyncHandler(async (req: newAdminRequest, res: Response) => {
   const options = {
     httpOnly: true,
     secure: true
